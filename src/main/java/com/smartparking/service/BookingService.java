@@ -1,5 +1,7 @@
 package com.smartparking.service;
 
+import com.smartparking.ai.OccupancyPrediction;
+import com.smartparking.ai.PredictionCache;
 import com.smartparking.entity.*;
 import com.smartparking.exception.BookingNotFoundException;
 import com.smartparking.exception.InvalidBookingStateException;
@@ -21,13 +23,16 @@ public class BookingService {
     private final ParkingSlotRepository slotRepository;
     private final UserRepository userRepository;
     private final PricingService pricingService;
+    private final PredictionCache predictionCache;
 
     public BookingService(BookingRepository bookingRepository, ParkingSlotRepository slotRepository,
-                           UserRepository userRepository, PricingService pricingService) {
+                           UserRepository userRepository, PricingService pricingService,
+                           PredictionCache predictionCache) {
         this.bookingRepository = bookingRepository;
         this.slotRepository = slotRepository;
         this.userRepository = userRepository;
         this.pricingService = pricingService;
+        this.predictionCache = predictionCache;
     }
 
     @Transactional
@@ -98,9 +103,9 @@ public class BookingService {
         if (booking.getStatus() != BookingStatus.ACTIVE) {
             throw new InvalidBookingStateException("Cannot check out booking in state " + booking.getStatus());
         }
-        // Placeholder occupancy of 0.5 until Task 8 wires in the real
-        // AI-predicted occupancy cache.
-        double predictedOccupancy = 0.5;
+        double predictedOccupancy = predictionCache.get(booking.getSlot().getLocation().getId())
+                .map(OccupancyPrediction::predictedOccupancyPct)
+                .orElse(0.5);
         var cost = pricingService.calculateCost(booking.getStartTime(), booking.getEndTime(), predictedOccupancy);
         booking.setTotalCost(cost);
         booking.setStatus(BookingStatus.COMPLETED);

@@ -1,5 +1,6 @@
 package com.smartparking.service;
 
+import com.smartparking.ai.PredictionCache;
 import com.smartparking.entity.*;
 import com.smartparking.exception.OverlappingBookingException;
 import com.smartparking.exception.SlotUnavailableException;
@@ -28,9 +29,10 @@ class BookingServiceTest {
     @Mock private ParkingSlotRepository slotRepository;
     @Mock private UserRepository userRepository;
     @Mock private PricingService pricingService;
+    @Mock private PredictionCache predictionCache;
 
     private BookingService service() {
-        return new BookingService(bookingRepository, slotRepository, userRepository, pricingService);
+        return new BookingService(bookingRepository, slotRepository, userRepository, pricingService, predictionCache);
     }
 
     @Test
@@ -139,6 +141,7 @@ class BookingServiceTest {
         when(bookingRepository.findById(1L)).thenReturn(Optional.of(booking));
         when(pricingService.calculateCost(any(Instant.class), any(Instant.class), org.mockito.ArgumentMatchers.anyDouble()))
                 .thenReturn(new java.math.BigDecimal("5.00"));
+        when(predictionCache.get(any())).thenReturn(java.util.Optional.empty());
 
         Booking result = service().checkOut("a@b.com", 1L);
 

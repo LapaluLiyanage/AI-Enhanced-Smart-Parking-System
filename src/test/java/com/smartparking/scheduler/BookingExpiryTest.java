@@ -1,5 +1,6 @@
 package com.smartparking.scheduler;
 
+import com.smartparking.ai.PredictionCache;
 import com.smartparking.entity.*;
 import com.smartparking.repository.BookingRepository;
 import com.smartparking.repository.ParkingSlotRepository;
@@ -27,10 +28,11 @@ class BookingExpiryTest {
     @Mock private ParkingSlotRepository slotRepository;
     @Mock private UserRepository userRepository;
     @Mock private PricingService pricingService;
+    @Mock private PredictionCache predictionCache;
 
     @Test
     void expiresStalePendingBookingsAndFreesSlots() {
-        BookingService service = new BookingService(bookingRepository, slotRepository, userRepository, pricingService);
+        BookingService service = new BookingService(bookingRepository, slotRepository, userRepository, pricingService, predictionCache);
 
         User user = new User("a@b.com", "hash", Role.USER);
         Location location = new Location("Mall", "addr", 1);
