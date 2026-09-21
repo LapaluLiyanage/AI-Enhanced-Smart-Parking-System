@@ -1,4 +1,4 @@
-package com.smartparking.config;
+package com.smartparking.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
