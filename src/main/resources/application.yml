@@ -1,0 +1,31 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: ai-enhanced-smart-parking-system
+  datasource:
+    url: jdbc:postgresql://localhost:5432/smart_parking
+    username: ${DB_USERNAME:parking_user}
+    password: ${DB_PASSWORD:parking_pass}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:dev-only-change-me-dev-only-change-me-32bytes}
+    expiration-ms: 3600000
+  booking:
+    pending-expiry-minutes: 10
+  pricing:
+    base-hourly-rate: 2.50
+  ai:
+    gemini:
+      api-key: ${GEMINI_API_KEY:}
+      model: gemini-1.5-flash
+      base-url: https://generativelanguage.googleapis.com/v1beta
