@@ -31,9 +31,10 @@ class BookingServiceTest {
     @Mock private PricingService pricingService;
     @Mock private PredictionCache predictionCache;
     @Mock private com.smartparking.repository.LocationRepository locationRepository;
+    @Mock private AnomalyDetectionService anomalyDetectionService;
 
     private BookingService service() {
-        return new BookingService(bookingRepository, slotRepository, userRepository, pricingService, predictionCache, locationRepository);
+        return new BookingService(bookingRepository, slotRepository, userRepository, pricingService, predictionCache, locationRepository, anomalyDetectionService);
     }
 
     @Test
@@ -44,6 +45,7 @@ class BookingServiceTest {
         Instant start = Instant.now().plus(1, ChronoUnit.HOURS);
         Instant end = start.plus(2, ChronoUnit.HOURS);
 
+        when(bookingRepository.findByUserEmailAndCreatedAtAfter(any(), any())).thenReturn(List.of());
         when(userRepository.findByEmail("a@b.com")).thenReturn(Optional.of(user));
         when(slotRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(slot));
         when(bookingRepository.findActiveOverlapping(1L, start, end)).thenReturn(List.of());
@@ -64,6 +66,7 @@ class BookingServiceTest {
         Instant end = start.plus(2, ChronoUnit.HOURS);
         Booking existing = new Booking(user, slot, start, end);
 
+        when(bookingRepository.findByUserEmailAndCreatedAtAfter(any(), any())).thenReturn(List.of());
         when(userRepository.findByEmail("a@b.com")).thenReturn(Optional.of(user));
         when(slotRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(slot));
         when(bookingRepository.findActiveOverlapping(1L, start, end)).thenReturn(List.of(existing));
@@ -80,6 +83,7 @@ class BookingServiceTest {
         Instant start = Instant.now().plus(1, ChronoUnit.HOURS);
         Instant end = start.plus(2, ChronoUnit.HOURS);
 
+        when(bookingRepository.findByUserEmailAndCreatedAtAfter(any(), any())).thenReturn(List.of());
         when(userRepository.findByEmail("a@b.com")).thenReturn(Optional.of(user));
         when(slotRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(slot));
 

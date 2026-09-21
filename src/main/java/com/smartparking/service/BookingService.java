@@ -25,20 +25,26 @@ public class BookingService {
     private final PricingService pricingService;
     private final PredictionCache predictionCache;
     private final com.smartparking.repository.LocationRepository locationRepository;
+    private final AnomalyDetectionService anomalyDetectionService;
 
     public BookingService(BookingRepository bookingRepository, ParkingSlotRepository slotRepository,
                            UserRepository userRepository, PricingService pricingService,
-                           PredictionCache predictionCache, com.smartparking.repository.LocationRepository locationRepository) {
+                           PredictionCache predictionCache, com.smartparking.repository.LocationRepository locationRepository,
+                           AnomalyDetectionService anomalyDetectionService) {
         this.bookingRepository = bookingRepository;
         this.slotRepository = slotRepository;
         this.userRepository = userRepository;
         this.pricingService = pricingService;
         this.predictionCache = predictionCache;
         this.locationRepository = locationRepository;
+        this.anomalyDetectionService = anomalyDetectionService;
     }
 
     @Transactional
     public Booking createBooking(String userEmail, Long slotId, Instant startTime, Instant endTime) {
+        var recent = bookingRepository.findByUserEmailAndCreatedAtAfter(userEmail, Instant.now().minusSeconds(300));
+        anomalyDetectionService.checkForAbuse(userEmail, recent);
+
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown user: " + userEmail));
 

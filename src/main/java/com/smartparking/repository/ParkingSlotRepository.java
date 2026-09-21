@@ -14,6 +14,7 @@ import java.util.Optional;
 public interface ParkingSlotRepository extends JpaRepository<ParkingSlot, Long> {
     List<ParkingSlot> findByLocationIdAndStatus(Long locationId, SlotStatus status);
     List<ParkingSlot> findByLocationId(Long locationId);
+    long countByLocationIdAndStatus(Long locationId, SlotStatus status);
 
     /**
      * Locks the slot row itself for the rest of the caller's transaction.

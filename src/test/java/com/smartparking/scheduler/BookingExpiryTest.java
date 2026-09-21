@@ -5,6 +5,7 @@ import com.smartparking.entity.*;
 import com.smartparking.repository.BookingRepository;
 import com.smartparking.repository.ParkingSlotRepository;
 import com.smartparking.repository.UserRepository;
+import com.smartparking.service.AnomalyDetectionService;
 import com.smartparking.service.BookingService;
 import com.smartparking.service.PricingService;
 import org.junit.jupiter.api.Test;
@@ -30,10 +31,11 @@ class BookingExpiryTest {
     @Mock private PricingService pricingService;
     @Mock private PredictionCache predictionCache;
     @Mock private com.smartparking.repository.LocationRepository locationRepository;
+    @Mock private AnomalyDetectionService anomalyDetectionService;
 
     @Test
     void expiresStalePendingBookingsAndFreesSlots() {
-        BookingService service = new BookingService(bookingRepository, slotRepository, userRepository, pricingService, predictionCache, locationRepository);
+        BookingService service = new BookingService(bookingRepository, slotRepository, userRepository, pricingService, predictionCache, locationRepository, anomalyDetectionService);
 
         User user = new User("a@b.com", "hash", Role.USER);
         Location location = new Location("Mall", "addr", 1);
