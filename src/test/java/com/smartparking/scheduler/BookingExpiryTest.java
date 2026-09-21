@@ -29,10 +29,11 @@ class BookingExpiryTest {
     @Mock private UserRepository userRepository;
     @Mock private PricingService pricingService;
     @Mock private PredictionCache predictionCache;
+    @Mock private com.smartparking.repository.LocationRepository locationRepository;
 
     @Test
     void expiresStalePendingBookingsAndFreesSlots() {
-        BookingService service = new BookingService(bookingRepository, slotRepository, userRepository, pricingService, predictionCache);
+        BookingService service = new BookingService(bookingRepository, slotRepository, userRepository, pricingService, predictionCache, locationRepository);
 
         User user = new User("a@b.com", "hash", Role.USER);
         Location location = new Location("Mall", "addr", 1);

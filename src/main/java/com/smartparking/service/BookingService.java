@@ -24,15 +24,17 @@ public class BookingService {
     private final UserRepository userRepository;
     private final PricingService pricingService;
     private final PredictionCache predictionCache;
+    private final com.smartparking.repository.LocationRepository locationRepository;
 
     public BookingService(BookingRepository bookingRepository, ParkingSlotRepository slotRepository,
                            UserRepository userRepository, PricingService pricingService,
-                           PredictionCache predictionCache) {
+                           PredictionCache predictionCache, com.smartparking.repository.LocationRepository locationRepository) {
         this.bookingRepository = bookingRepository;
         this.slotRepository = slotRepository;
         this.userRepository = userRepository;
         this.pricingService = pricingService;
         this.predictionCache = predictionCache;
+        this.locationRepository = locationRepository;
     }
 
     @Transactional
@@ -61,6 +63,20 @@ public class BookingService {
         Booking booking = new Booking(user, slot, startTime, endTime);
         slot.setStatus(SlotStatus.RESERVED);
         return bookingRepository.save(booking);
+    }
+
+    @Transactional
+    public Booking createBookingByLocationName(String userEmail, String locationName, Instant startTime, Instant endTime) {
+        var location = locationRepository.findAll().stream()
+                .filter(l -> l.getName().equalsIgnoreCase(locationName))
+                .findFirst()
+                .orElseThrow(() -> new SlotUnavailableException("Unknown location: " + locationName));
+
+        var availableSlot = slotRepository.findByLocationIdAndStatus(location.getId(), SlotStatus.AVAILABLE)
+                .stream().findFirst()
+                .orElseThrow(() -> new SlotUnavailableException("No available slots at " + locationName));
+
+        return createBooking(userEmail, availableSlot.getId(), startTime, endTime);
     }
 
     @Transactional

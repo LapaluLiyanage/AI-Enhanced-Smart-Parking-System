@@ -72,6 +72,50 @@ public class GeminiAssistantService implements AiAssistantService {
 
     @Override
     public BookingIntent parseBookingIntent(String message, List<String> knownLocationNames) {
-        throw new UnsupportedOperationException("Implemented in Task 9");
+        ObjectNode requestBody = objectMapper.createObjectNode();
+        ObjectNode content = requestBody.putArray("contents").addObject();
+        content.putArray("parts").addObject().put("text", """
+                Current UTC time is %s. Known parking location names: %s.
+                Parse the user's booking request and call create_booking with
+                the closest matching location name from the known list, an ISO-8601
+                UTC start time, and a duration in minutes. If no start time is given,
+                assume now. If no duration is given, assume 60 minutes.
+
+                User request: "%s"
+                """.formatted(java.time.Instant.now(), knownLocationNames, message));
+
+        ObjectNode tool = requestBody.putArray("tools").addObject();
+        ObjectNode functionDeclaration = tool.putArray("functionDeclarations").addObject();
+        functionDeclaration.put("name", "create_booking");
+        functionDeclaration.put("description", "Create a parking booking from parsed intent");
+        ObjectNode parameters = functionDeclaration.putObject("parameters");
+        parameters.put("type", "object");
+        ObjectNode properties = parameters.putObject("properties");
+        properties.putObject("locationName").put("type", "string");
+        properties.putObject("startTime").put("type", "string").put("description", "ISO-8601 UTC datetime");
+        properties.putObject("durationMinutes").put("type", "integer");
+        parameters.putArray("required").add("locationName").add("startTime").add("durationMinutes");
+
+        JsonNode response = restClient.post()
+                .uri("/models/{model}:generateContent?key={key}", model, apiKey)
+                .body(requestBody)
+                .retrieve()
+                .body(JsonNode.class);
+
+        JsonNode functionCall = response
+                .path("candidates").path(0)
+                .path("content").path("parts").path(0)
+                .path("functionCall");
+
+        if (functionCall.isMissingNode()) {
+            throw new IllegalArgumentException("Could not understand booking request: " + message);
+        }
+
+        JsonNode args = functionCall.path("args");
+        String locationName = args.path("locationName").asText();
+        java.time.Instant startTime = java.time.Instant.parse(args.path("startTime").asText());
+        int durationMinutes = args.path("durationMinutes").asInt(60);
+
+        return new BookingIntent(locationName, startTime, durationMinutes);
     }
 }

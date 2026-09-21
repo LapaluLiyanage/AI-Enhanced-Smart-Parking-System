@@ -30,9 +30,10 @@ class BookingServiceTest {
     @Mock private UserRepository userRepository;
     @Mock private PricingService pricingService;
     @Mock private PredictionCache predictionCache;
+    @Mock private com.smartparking.repository.LocationRepository locationRepository;
 
     private BookingService service() {
-        return new BookingService(bookingRepository, slotRepository, userRepository, pricingService, predictionCache);
+        return new BookingService(bookingRepository, slotRepository, userRepository, pricingService, predictionCache, locationRepository);
     }
 
     @Test
