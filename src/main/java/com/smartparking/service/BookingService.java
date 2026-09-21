@@ -11,6 +11,7 @@ import com.smartparking.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.Instant;
 
 @Service
@@ -106,5 +107,16 @@ public class BookingService {
             throw new IllegalArgumentException("Booking does not belong to this user");
         }
         return booking;
+    }
+
+    @Transactional
+    public int expireStalePendingBookings(Duration pendingExpiry) {
+        Instant cutoff = Instant.now().minus(pendingExpiry);
+        var stale = bookingRepository.findByStatusAndCreatedAtBefore(BookingStatus.PENDING, cutoff);
+        for (Booking booking : stale) {
+            booking.setStatus(BookingStatus.EXPIRED);
+            booking.getSlot().setStatus(SlotStatus.AVAILABLE);
+        }
+        return stale.size();
     }
 }
