@@ -31,4 +31,19 @@ public class BookingController {
         bookingService.cancelBooking(auth.getName(), id);
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/{id}/confirm")
+    public BookingResponse confirm(@PathVariable Long id, Authentication auth) {
+        return BookingResponse.from(bookingService.confirmBooking(auth.getName(), id));
+    }
+
+    @PostMapping("/{id}/checkin")
+    public BookingResponse checkIn(@PathVariable Long id, Authentication auth) {
+        return BookingResponse.from(bookingService.checkIn(auth.getName(), id));
+    }
+
+    @PostMapping("/{id}/checkout")
+    public BookingResponse checkOut(@PathVariable Long id, Authentication auth) {
+        return BookingResponse.from(bookingService.checkOut(auth.getName(), id));
+    }
 }

@@ -56,11 +56,7 @@ public class BookingService {
 
     @Transactional
     public void cancelBooking(String userEmail, Long bookingId) {
-        Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new BookingNotFoundException("Booking not found: " + bookingId));
-        if (!booking.getUser().getEmail().equals(userEmail)) {
-            throw new IllegalArgumentException("Booking does not belong to this user");
-        }
+        Booking booking = getOwnedBooking(userEmail, bookingId);
         if (booking.getStatus() == BookingStatus.ACTIVE
                 || booking.getStatus() == BookingStatus.COMPLETED
                 || booking.getStatus() == BookingStatus.CANCELLED) {
@@ -68,5 +64,47 @@ public class BookingService {
         }
         booking.setStatus(BookingStatus.CANCELLED);
         booking.getSlot().setStatus(SlotStatus.AVAILABLE);
+    }
+
+    @Transactional
+    public Booking confirmBooking(String userEmail, Long bookingId) {
+        Booking booking = getOwnedBooking(userEmail, bookingId);
+        if (booking.getStatus() != BookingStatus.PENDING) {
+            throw new InvalidBookingStateException("Cannot confirm booking in state " + booking.getStatus());
+        }
+        booking.setStatus(BookingStatus.CONFIRMED);
+        booking.setConfirmedAt(Instant.now());
+        return booking;
+    }
+
+    @Transactional
+    public Booking checkIn(String userEmail, Long bookingId) {
+        Booking booking = getOwnedBooking(userEmail, bookingId);
+        if (booking.getStatus() != BookingStatus.CONFIRMED) {
+            throw new InvalidBookingStateException("Cannot check in booking in state " + booking.getStatus());
+        }
+        booking.setStatus(BookingStatus.ACTIVE);
+        booking.getSlot().setStatus(SlotStatus.OCCUPIED);
+        return booking;
+    }
+
+    @Transactional
+    public Booking checkOut(String userEmail, Long bookingId) {
+        Booking booking = getOwnedBooking(userEmail, bookingId);
+        if (booking.getStatus() != BookingStatus.ACTIVE) {
+            throw new InvalidBookingStateException("Cannot check out booking in state " + booking.getStatus());
+        }
+        booking.setStatus(BookingStatus.COMPLETED);
+        booking.getSlot().setStatus(SlotStatus.AVAILABLE);
+        return booking;
+    }
+
+    private Booking getOwnedBooking(String userEmail, Long bookingId) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new BookingNotFoundException("Booking not found: " + bookingId));
+        if (!booking.getUser().getEmail().equals(userEmail)) {
+            throw new IllegalArgumentException("Booking does not belong to this user");
+        }
+        return booking;
     }
 }

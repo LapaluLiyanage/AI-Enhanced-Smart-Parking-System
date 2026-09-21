@@ -82,4 +82,64 @@ class BookingServiceTest {
         assertThatThrownBy(() -> service().createBooking("a@b.com", 1L, start, end))
                 .isInstanceOf(SlotUnavailableException.class);
     }
+
+    @Test
+    void confirmMovesBookingFromPendingToConfirmed() {
+        User user = new User("a@b.com", "hash", Role.USER);
+        Location location = new Location("Mall", "addr", 1);
+        ParkingSlot slot = new ParkingSlot(location, 1, SlotStatus.RESERVED);
+        Booking booking = new Booking(user, slot, Instant.now().plusSeconds(3600), Instant.now().plusSeconds(7200));
+
+        when(bookingRepository.findById(1L)).thenReturn(Optional.of(booking));
+
+        Booking result = service().confirmBooking("a@b.com", 1L);
+
+        assertThat(result.getStatus()).isEqualTo(BookingStatus.CONFIRMED);
+        assertThat(result.getConfirmedAt()).isNotNull();
+    }
+
+    @Test
+    void checkInMovesConfirmedToActiveAndOccupiesSlot() {
+        User user = new User("a@b.com", "hash", Role.USER);
+        Location location = new Location("Mall", "addr", 1);
+        ParkingSlot slot = new ParkingSlot(location, 1, SlotStatus.RESERVED);
+        Booking booking = new Booking(user, slot, Instant.now().minusSeconds(60), Instant.now().plusSeconds(3600));
+        booking.setStatus(BookingStatus.CONFIRMED);
+
+        when(bookingRepository.findById(1L)).thenReturn(Optional.of(booking));
+
+        Booking result = service().checkIn("a@b.com", 1L);
+
+        assertThat(result.getStatus()).isEqualTo(BookingStatus.ACTIVE);
+        assertThat(slot.getStatus()).isEqualTo(SlotStatus.OCCUPIED);
+    }
+
+    @Test
+    void checkInRejectsBookingNotYetConfirmed() {
+        User user = new User("a@b.com", "hash", Role.USER);
+        Location location = new Location("Mall", "addr", 1);
+        ParkingSlot slot = new ParkingSlot(location, 1, SlotStatus.RESERVED);
+        Booking booking = new Booking(user, slot, Instant.now(), Instant.now().plusSeconds(3600));
+
+        when(bookingRepository.findById(1L)).thenReturn(Optional.of(booking));
+
+        assertThatThrownBy(() -> service().checkIn("a@b.com", 1L))
+                .isInstanceOf(com.smartparking.exception.InvalidBookingStateException.class);
+    }
+
+    @Test
+    void checkOutMovesActiveToCompletedAndFreesSlot() {
+        User user = new User("a@b.com", "hash", Role.USER);
+        Location location = new Location("Mall", "addr", 1);
+        ParkingSlot slot = new ParkingSlot(location, 1, SlotStatus.OCCUPIED);
+        Booking booking = new Booking(user, slot, Instant.now().minusSeconds(3600), Instant.now());
+        booking.setStatus(BookingStatus.ACTIVE);
+
+        when(bookingRepository.findById(1L)).thenReturn(Optional.of(booking));
+
+        Booking result = service().checkOut("a@b.com", 1L);
+
+        assertThat(result.getStatus()).isEqualTo(BookingStatus.COMPLETED);
+        assertThat(slot.getStatus()).isEqualTo(SlotStatus.AVAILABLE);
+    }
 }
