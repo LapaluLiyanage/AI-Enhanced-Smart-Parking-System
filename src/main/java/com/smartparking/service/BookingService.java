@@ -20,11 +20,14 @@ public class BookingService {
     private final BookingRepository bookingRepository;
     private final ParkingSlotRepository slotRepository;
     private final UserRepository userRepository;
+    private final PricingService pricingService;
 
-    public BookingService(BookingRepository bookingRepository, ParkingSlotRepository slotRepository, UserRepository userRepository) {
+    public BookingService(BookingRepository bookingRepository, ParkingSlotRepository slotRepository,
+                           UserRepository userRepository, PricingService pricingService) {
         this.bookingRepository = bookingRepository;
         this.slotRepository = slotRepository;
         this.userRepository = userRepository;
+        this.pricingService = pricingService;
     }
 
     @Transactional
@@ -95,6 +98,11 @@ public class BookingService {
         if (booking.getStatus() != BookingStatus.ACTIVE) {
             throw new InvalidBookingStateException("Cannot check out booking in state " + booking.getStatus());
         }
+        // Placeholder occupancy of 0.5 until Task 8 wires in the real
+        // AI-predicted occupancy cache.
+        double predictedOccupancy = 0.5;
+        var cost = pricingService.calculateCost(booking.getStartTime(), booking.getEndTime(), predictedOccupancy);
+        booking.setTotalCost(cost);
         booking.setStatus(BookingStatus.COMPLETED);
         booking.getSlot().setStatus(SlotStatus.AVAILABLE);
         return booking;

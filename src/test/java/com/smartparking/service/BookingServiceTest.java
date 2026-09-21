@@ -27,9 +27,10 @@ class BookingServiceTest {
     @Mock private BookingRepository bookingRepository;
     @Mock private ParkingSlotRepository slotRepository;
     @Mock private UserRepository userRepository;
+    @Mock private PricingService pricingService;
 
     private BookingService service() {
-        return new BookingService(bookingRepository, slotRepository, userRepository);
+        return new BookingService(bookingRepository, slotRepository, userRepository, pricingService);
     }
 
     @Test
@@ -136,10 +137,13 @@ class BookingServiceTest {
         booking.setStatus(BookingStatus.ACTIVE);
 
         when(bookingRepository.findById(1L)).thenReturn(Optional.of(booking));
+        when(pricingService.calculateCost(any(Instant.class), any(Instant.class), org.mockito.ArgumentMatchers.anyDouble()))
+                .thenReturn(new java.math.BigDecimal("5.00"));
 
         Booking result = service().checkOut("a@b.com", 1L);
 
         assertThat(result.getStatus()).isEqualTo(BookingStatus.COMPLETED);
         assertThat(slot.getStatus()).isEqualTo(SlotStatus.AVAILABLE);
+        assertThat(result.getTotalCost()).isEqualByComparingTo("5.00");
     }
 }
