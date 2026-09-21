@@ -5,7 +5,7 @@ spring:
   application:
     name: ai-enhanced-smart-parking-system
   datasource:
-    url: jdbc:postgresql://localhost:5432/smart_parking
+    url: jdbc:postgresql://localhost:15432/smart_parking
     username: ${DB_USERNAME:parking_user}
     password: ${DB_PASSWORD:parking_pass}
   jpa:
