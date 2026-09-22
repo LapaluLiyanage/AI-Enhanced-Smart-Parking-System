@@ -33,6 +33,12 @@ public class AssistantController {
     public BookingResponse book(@Valid @RequestBody AssistantBookingRequest request, Authentication auth) {
         var knownNames = locationRepository.findAll().stream().map(l -> l.getName()).toList();
         var intent = aiAssistantService.parseBookingIntent(request.message(), knownNames);
+        if (intent.locationName() == null || intent.locationName().isBlank()) {
+            throw new IllegalArgumentException("AI assistant could not determine a location from the request");
+        }
+        if (intent.durationMinutes() <= 0) {
+            throw new IllegalArgumentException("AI assistant returned an invalid duration: " + intent.durationMinutes());
+        }
         var endTime = intent.startTime().plus(Duration.ofMinutes(intent.durationMinutes()));
         var booking = bookingService.createBookingByLocationName(auth.getName(), intent.locationName(), intent.startTime(), endTime);
         return BookingResponse.from(booking);

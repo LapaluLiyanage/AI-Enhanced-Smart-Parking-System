@@ -20,6 +20,10 @@ public class AnomalyDetectionService {
         this.windowMinutes = windowMinutes;
     }
 
+    public int getWindowMinutes() {
+        return windowMinutes;
+    }
+
     public void checkForAbuse(String userEmail, List<Booking> recentBookingsInWindow) {
         if (recentBookingsInWindow.size() > maxBookingsPerWindow) {
             throw new AnomalyDetectedException(

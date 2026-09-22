@@ -33,6 +33,11 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, ex, req);
     }
 
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Object> handleUnexpected(Exception ex, WebRequest req) {
+        return build(HttpStatus.INTERNAL_SERVER_ERROR, new RuntimeException("An unexpected error occurred"), req);
+    }
+
     private ResponseEntity<Object> build(HttpStatus status, RuntimeException ex, WebRequest req) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("timestamp", Instant.now().toString());

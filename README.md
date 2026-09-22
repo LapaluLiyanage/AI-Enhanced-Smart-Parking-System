@@ -36,11 +36,14 @@ requests.
 ## Architecture notes
 
 - **Booking overlap safety**: `BookingService.createBooking` takes a
-  pessimistic write lock (`SELECT ... FOR UPDATE`) on a slot's active
-  bookings before checking for overlap, all inside one transaction — this is
-  what a concurrency test in `BookingServiceConcurrencyTest` verifies by
-  firing 10 concurrent requests for the same slot/window and asserting
-  exactly one succeeds.
+  pessimistic write lock (`SELECT ... FOR UPDATE`) on the `ParkingSlot` row
+  itself (via `ParkingSlotRepository.findByIdForUpdate`) before checking for
+  overlapping bookings, all inside one transaction. The slot row always
+  exists — unlike a `Booking` row, which may not exist yet for a slot's
+  first-ever reservation — so locking the slot is what actually serializes
+  all concurrent booking attempts on it; this is what a concurrency test in
+  `BookingServiceConcurrencyTest` verifies by firing 10 concurrent requests
+  for the same slot/window and asserting exactly one succeeds.
 - **AI as an interface layer**: `AiAssistantService` is an interface;
   `GeminiAssistantService` is the only implementation, calling the Gemini
   REST API directly. Every test that touches AI-dependent code mocks this

@@ -25,6 +25,9 @@ app:
     pending-expiry-minutes: 10
   pricing:
     base-hourly-rate: 2.50
+  anomaly:
+    max-bookings-per-window: 5
+    window-minutes: 5
   ai:
     gemini:
       api-key: ${GEMINI_API_KEY:}

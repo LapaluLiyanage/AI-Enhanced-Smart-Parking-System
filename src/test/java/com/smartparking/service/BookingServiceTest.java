@@ -76,6 +76,85 @@ class BookingServiceTest {
     }
 
     @Test
+    void createBookingRejectsEndTimeNotAfterStartTime() {
+        Instant start = Instant.now().plus(1, ChronoUnit.HOURS);
+        Instant end = start.minus(1, ChronoUnit.HOURS);
+
+        when(bookingRepository.findByUserEmailAndCreatedAtAfter(any(), any())).thenReturn(List.of());
+
+        assertThatThrownBy(() -> service().createBooking("a@b.com", 1L, start, end))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("endTime must be after startTime");
+    }
+
+    @Test
+    void createBookingRejectsEndTimeEqualToStartTime() {
+        Instant start = Instant.now().plus(1, ChronoUnit.HOURS);
+
+        when(bookingRepository.findByUserEmailAndCreatedAtAfter(any(), any())).thenReturn(List.of());
+
+        assertThatThrownBy(() -> service().createBooking("a@b.com", 1L, start, start))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void createBookingUsesConfiguredAnomalyWindowForLookback() {
+        User user = new User("a@b.com", "hash", Role.USER);
+        Location location = new Location("Mall", "addr", 1);
+        ParkingSlot slot = new ParkingSlot(location, 1, SlotStatus.AVAILABLE);
+        Instant start = Instant.now().plus(1, ChronoUnit.HOURS);
+        Instant end = start.plus(2, ChronoUnit.HOURS);
+
+        when(anomalyDetectionService.getWindowMinutes()).thenReturn(42);
+        when(bookingRepository.findByUserEmailAndCreatedAtAfter(any(), any())).thenReturn(List.of());
+        when(userRepository.findByEmail("a@b.com")).thenReturn(Optional.of(user));
+        when(slotRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(slot));
+        when(bookingRepository.findActiveOverlapping(1L, start, end)).thenReturn(List.of());
+        when(bookingRepository.save(any(Booking.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        service().createBooking("a@b.com", 1L, start, end);
+
+        org.mockito.ArgumentCaptor<Instant> cutoffCaptor = org.mockito.ArgumentCaptor.forClass(Instant.class);
+        org.mockito.Mockito.verify(bookingRepository)
+                .findByUserEmailAndCreatedAtAfter(org.mockito.ArgumentMatchers.eq("a@b.com"), cutoffCaptor.capture());
+
+        Instant expectedCutoff = Instant.now().minus(java.time.Duration.ofMinutes(42));
+        assertThat(cutoffCaptor.getValue()).isCloseTo(expectedCutoff, org.assertj.core.api.Assertions.within(5, ChronoUnit.SECONDS));
+    }
+
+    @Test
+    void cancelBookingFreesSlotWhenNoOtherActiveBookingsRemain() {
+        User user = new User("a@b.com", "hash", Role.USER);
+        Location location = new Location("Mall", "addr", 1);
+        ParkingSlot slot = new ParkingSlot(location, 1, SlotStatus.RESERVED);
+        Booking booking = new Booking(user, slot, Instant.now().plusSeconds(3600), Instant.now().plusSeconds(7200));
+
+        when(bookingRepository.findById(1L)).thenReturn(Optional.of(booking));
+        when(bookingRepository.countByStatusInAndSlotIdAndIdNot(any(), any(), any())).thenReturn(0L);
+
+        service().cancelBooking("a@b.com", 1L);
+
+        assertThat(booking.getStatus()).isEqualTo(BookingStatus.CANCELLED);
+        assertThat(slot.getStatus()).isEqualTo(SlotStatus.AVAILABLE);
+    }
+
+    @Test
+    void cancelBookingLeavesSlotReservedWhenOtherActiveBookingRemains() {
+        User user = new User("a@b.com", "hash", Role.USER);
+        Location location = new Location("Mall", "addr", 1);
+        ParkingSlot slot = new ParkingSlot(location, 1, SlotStatus.RESERVED);
+        Booking booking = new Booking(user, slot, Instant.now().plusSeconds(3600), Instant.now().plusSeconds(7200));
+
+        when(bookingRepository.findById(1L)).thenReturn(Optional.of(booking));
+        when(bookingRepository.countByStatusInAndSlotIdAndIdNot(any(), any(), any())).thenReturn(1L);
+
+        service().cancelBooking("a@b.com", 1L);
+
+        assertThat(booking.getStatus()).isEqualTo(BookingStatus.CANCELLED);
+        assertThat(slot.getStatus()).isEqualTo(SlotStatus.RESERVED);
+    }
+
+    @Test
     void createBookingRejectsOccupiedSlot() {
         User user = new User("a@b.com", "hash", Role.USER);
         Location location = new Location("Mall", "addr", 1);

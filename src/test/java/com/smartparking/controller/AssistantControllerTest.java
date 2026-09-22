@@ -62,4 +62,42 @@ class AssistantControllerTest {
             .andExpect(jsonPath("$.locationId").value(location.getId()))
             .andExpect(jsonPath("$.status").value("PENDING"));
     }
+
+    @Test
+    @WithMockUser(username = "assistant-test-blank@example.com")
+    void rejectsBlankLocationNameFromAi() throws Exception {
+        userRepository.save(new User("assistant-test-blank@example.com", "hash", Role.USER));
+
+        Instant start = Instant.now().plus(1, ChronoUnit.HOURS).truncatedTo(ChronoUnit.SECONDS);
+        when(aiAssistantService.parseBookingIntent(anyString(), anyList()))
+                .thenReturn(new BookingIntent("  ", start, 60));
+
+        mockMvc.perform(post("/assistant/book")
+                .contentType(APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(new Object() {
+                    public String message = "book me somewhere";
+                })))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("AI assistant could not determine a location from the request"));
+    }
+
+    @Test
+    @WithMockUser(username = "assistant-test-duration@example.com")
+    void rejectsNonPositiveDurationFromAi() throws Exception {
+        Location location = locationRepository.save(new Location("Duration Test Lot", "addr", 1));
+        slotRepository.save(new ParkingSlot(location, 1, SlotStatus.AVAILABLE));
+        userRepository.save(new User("assistant-test-duration@example.com", "hash", Role.USER));
+
+        Instant start = Instant.now().plus(1, ChronoUnit.HOURS).truncatedTo(ChronoUnit.SECONDS);
+        when(aiAssistantService.parseBookingIntent(anyString(), anyList()))
+                .thenReturn(new BookingIntent("Duration Test Lot", start, 0));
+
+        mockMvc.perform(post("/assistant/book")
+                .contentType(APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(new Object() {
+                    public String message = "book me a spot for no time at all";
+                })))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("AI assistant returned an invalid duration: 0"));
+    }
 }

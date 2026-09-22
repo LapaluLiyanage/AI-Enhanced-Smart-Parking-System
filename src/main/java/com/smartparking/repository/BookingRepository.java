@@ -30,6 +30,9 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     List<Booking> findByUserEmailAndCreatedAtAfter(String email, Instant cutoff);
 
+    long countByStatusInAndSlotIdAndIdNot(
+            java.util.Collection<com.smartparking.entity.BookingStatus> statuses, Long slotId, Long excludedBookingId);
+
     // Native query: the brief's JPQL form (FUNCTION('EXTRACT', HOUR FROM ...))
     // does not parse under Hibernate 6's HQL grammar (FUNCTION() args must be
     // expressions, not "HOUR FROM x"), and ISODOW is a Postgres-specific

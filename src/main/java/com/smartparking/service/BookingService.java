@@ -42,8 +42,13 @@ public class BookingService {
 
     @Transactional
     public Booking createBooking(String userEmail, Long slotId, Instant startTime, Instant endTime) {
-        var recent = bookingRepository.findByUserEmailAndCreatedAtAfter(userEmail, Instant.now().minusSeconds(300));
+        var recent = bookingRepository.findByUserEmailAndCreatedAtAfter(
+                userEmail, Instant.now().minus(Duration.ofMinutes(anomalyDetectionService.getWindowMinutes())));
         anomalyDetectionService.checkForAbuse(userEmail, recent);
+
+        if (!endTime.isAfter(startTime)) {
+            throw new IllegalArgumentException("endTime must be after startTime");
+        }
 
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown user: " + userEmail));
@@ -94,7 +99,7 @@ public class BookingService {
             throw new InvalidBookingStateException("Cannot cancel booking in state " + booking.getStatus());
         }
         booking.setStatus(BookingStatus.CANCELLED);
-        booking.getSlot().setStatus(SlotStatus.AVAILABLE);
+        freeSlotIfNoOtherActiveBookings(booking);
     }
 
     @Transactional
@@ -131,8 +136,17 @@ public class BookingService {
         var cost = pricingService.calculateCost(booking.getStartTime(), booking.getEndTime(), predictedOccupancy);
         booking.setTotalCost(cost);
         booking.setStatus(BookingStatus.COMPLETED);
-        booking.getSlot().setStatus(SlotStatus.AVAILABLE);
+        freeSlotIfNoOtherActiveBookings(booking);
         return booking;
+    }
+
+    private void freeSlotIfNoOtherActiveBookings(Booking booking) {
+        long remainingActive = bookingRepository.countByStatusInAndSlotIdAndIdNot(
+                java.util.List.of(BookingStatus.PENDING, BookingStatus.CONFIRMED, BookingStatus.ACTIVE),
+                booking.getSlot().getId(), booking.getId());
+        if (remainingActive == 0) {
+            booking.getSlot().setStatus(SlotStatus.AVAILABLE);
+        }
     }
 
     private Booking getOwnedBooking(String userEmail, Long bookingId) {
@@ -150,7 +164,7 @@ public class BookingService {
         var stale = bookingRepository.findByStatusAndCreatedAtBefore(BookingStatus.PENDING, cutoff);
         for (Booking booking : stale) {
             booking.setStatus(BookingStatus.EXPIRED);
-            booking.getSlot().setStatus(SlotStatus.AVAILABLE);
+            freeSlotIfNoOtherActiveBookings(booking);
         }
         return stale.size();
     }

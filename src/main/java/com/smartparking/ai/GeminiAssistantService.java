@@ -113,7 +113,13 @@ public class GeminiAssistantService implements AiAssistantService {
 
         JsonNode args = functionCall.path("args");
         String locationName = args.path("locationName").asText();
-        java.time.Instant startTime = java.time.Instant.parse(args.path("startTime").asText());
+        java.time.Instant startTime;
+        try {
+            startTime = java.time.Instant.parse(args.path("startTime").asText());
+        } catch (java.time.format.DateTimeParseException e) {
+            throw new IllegalArgumentException(
+                    "AI assistant returned an unparseable start time: " + args.path("startTime").asText());
+        }
         int durationMinutes = args.path("durationMinutes").asInt(60);
 
         return new BookingIntent(locationName, startTime, durationMinutes);
