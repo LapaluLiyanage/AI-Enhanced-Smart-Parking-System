@@ -21,12 +21,14 @@ API, JUnit 5 + Mockito, Testcontainers.
 ## Running tests
 
 ```bash
-docker compose up -d   # only needed for the concurrency test
+docker compose up -d   # required — most test classes use this Postgres instance
 ./mvnw test
 ```
 
-Testcontainers will automatically start its own Postgres container for the
-repository integration tests — Docker must be running.
+One test class (`BookingRepositoryIntegrationTest`) uses Testcontainers to
+start its own separate, isolated Postgres container automatically; every
+other `@SpringBootTest` class connects to the docker-compose Postgres above.
+Docker must be running either way.
 
 ## API overview
 
@@ -54,3 +56,33 @@ requests.
   database itself guarantee no booking overlap can ever be inserted,
   independent of application code — a natural next step for production
   hardening.
+
+## Known limitations
+
+Honest notes on what's out of scope or left as documented debt for this
+portfolio-scale build, rather than silently glossed over:
+
+- **Test database isolation**: only `BookingRepositoryIntegrationTest` uses
+  a Testcontainers-provisioned Postgres; the other integration test classes
+  share the docker-compose Postgres and use fixed-literal seed data (e.g. a
+  location named "Mall Entrance"). Each class passes on a fresh database,
+  but re-running the full suite twice without resetting the Postgres volume
+  (`docker compose down -v && docker compose up -d`) can hit unique-constraint
+  collisions. A cleaner fix is converting every `@SpringBootTest` class to
+  the same singleton-Testcontainers pattern.
+- **HTTP status codes are not fully idiomatic in a few places**: an unknown
+  location currently returns 400 (`IllegalArgumentException`) rather than
+  404, and accessing another user's booking returns 400 rather than 403/404.
+- **`POST /assistant/book` returns 200, `POST /bookings` returns 201** for
+  the same underlying operation (creating a `PENDING` booking) — worth
+  aligning.
+- **No way to provision an `ADMIN` user or seed locations/slots** through
+  the API — registration always creates a `USER`, and locations/slots are
+  expected to be seeded directly in the database. Fine for a demo, not for
+  a real deployment.
+- **Schema managed via `ddl-auto: update`**, not a migration tool like
+  Flyway/Liquibase — acceptable here, not production-grade.
+- A few controllers (`AdminController`, `LocationController`,
+  `PredictionController`) read repositories directly instead of going
+  through a service layer, which is a minor departure from the
+  `controller → service → repository` layering described above.
